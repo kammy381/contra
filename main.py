@@ -2,7 +2,7 @@ import pygame
 import sys
 from settings import *
 from pytmx.util_pygame import load_pygame
-from tile import Tile
+from tile import Tile, CollisionTile, MovingPlatform
 from player import Player
 from pygame.math import Vector2 as vector
 
@@ -31,6 +31,8 @@ class Main:
 
         # groups
         self.all_sprites = AllSprites()
+        self.collision_sprites = pygame.sprite.Group()
+        self.platform_sprites = pygame.sprite.Group()
 
         # run setup
         self.setup()
@@ -38,10 +40,10 @@ class Main:
     def setup(self):
         tmx_map = load_pygame("./data/map.tmx")
 
-        # tiles
+        # collisiontiles
         for x,y, surf in tmx_map.get_layer_by_name('Level').tiles():
-            Tile((x*64, y*64), surf, self.all_sprites, LAYERS['Level'])
-
+            CollisionTile((x*64, y*64), surf, [self.all_sprites, self.collision_sprites])
+        # tiles
         for layer in ['BG', 'BG Detail', 'FG Detail Bottom', 'FG Detail Top']:
             for x,y, surf in tmx_map.get_layer_by_name(layer).tiles():
                 Tile((x*64, y*64), surf, self.all_sprites, LAYERS[layer])
@@ -51,7 +53,31 @@ class Main:
         # objects
         for obj in tmx_map.get_layer_by_name('Entities'):
             if obj.name == "Player":
-                self.player = Player((obj.x, obj.y), self.all_sprites, './graphics/player')
+                self.player = Player((obj.x, obj.y), self.all_sprites, './graphics/player', self.collision_sprites)
+
+        self.platform_border_rects = []
+        for obj in tmx_map.get_layer_by_name('Platforms'):
+            if obj.name == "Platform":
+                MovingPlatform((obj.x,obj.y), obj.image, [self.all_sprites,self.collision_sprites, self.platform_sprites])
+            else: # border/restraint
+                border_rect = pygame.Rect(obj.x, obj.y,obj.width, obj.height)
+                self.platform_border_rects.append(border_rect)
+    def platform_collisions(self):
+        for platform in self.platform_sprites.sprites():
+            for border in self.platform_border_rects:
+                if platform.rect.colliderect(border):
+                    if platform.direction.y < 0: # going up
+                        platform.rect.top = border.bottom
+                        platform.pos.y = platform.rect.y
+                        platform.direction.y =1
+                    else:
+                        platform.rect.bottom = border.top
+                        platform.pos.y = platform.rect.y
+                        platform.direction.y = -1
+            if platform.rect.colliderect(self.player.rect) and self.player.rect.centery > platform.rect.centery:
+                platform.rect.bottom = self.player.rect.top
+                platform.pos.y = platform.rect.y
+                platform.direction.y = -1
 
     def run(self):
         while True:
@@ -64,7 +90,7 @@ class Main:
 
             # salmon color fill
             self.display_surface.fill((249, 131, 103))
-
+            self.platform_collisions()
             self.all_sprites.update(dt)
             self.all_sprites.custom_draw(self.player)
 
