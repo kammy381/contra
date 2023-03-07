@@ -2,31 +2,18 @@ import pygame
 from settings import *
 from pygame.math import Vector2 as vector
 from os import walk
+from entity import Entity
 
-class Player(pygame.sprite.Sprite):
-    def __init__(self, pos, groups, path, collision_sprites):
-        super().__init__(groups)
-        self.import_assets(path)
-        self.frame_index = 0
-        self.status = 'right_idle'
-        self.image = self.animations[self.status][self.frame_index]
-        self.rect = self.image.get_rect(topleft=pos)
-        self.z = LAYERS['Level']
+class Player(Entity):
+    def __init__(self, pos, groups, path, collision_sprites, shoot):
+        super().__init__(pos, path,groups, shoot)
 
-        # float pos
-        self.direction = vector()
-        self.pos = vector(self.rect.topleft)
-        self.speed = 400
-
-        # copy rect for collision
-        self.old_rect = self.rect.copy()
         self.collision_sprites = collision_sprites
 
         # vertical movement
         self.gravity = 15
         self.jump_speed = 1400
         self.on_floor = False
-        self.duck = False
         self.moving_floor = None
 
     def get_status(self):
@@ -51,25 +38,6 @@ class Player(pygame.sprite.Sprite):
                 if hasattr(sprite,'direction'):
                     self.moving_floor = sprite
 
-    def import_assets(self, path):
-        self.animations = {}
-        for index, folder in enumerate(walk(path)):
-            if index ==0:
-                for name in folder[1]:
-                    self.animations[name]=[]
-            else:
-                for file_name in sorted(folder[2], key=lambda string: int(string.split('.')[0])):
-                    path = folder[0].replace('\\',"/") + '/' + file_name
-                    surf = pygame.image.load(path).convert_alpha()
-                    key = folder[0].split('\\')[1]
-                    self.animations[key].append(surf)
-
-    def animate(self, dt):
-        self.frame_index += 7 * dt
-        if self.frame_index >= len(self.animations[self.status]):
-            self.frame_index = 0
-        self.image = self.animations[self.status][int(self.frame_index)]
-
     def input(self):
         keys = pygame.key.get_pressed()
 
@@ -90,8 +58,13 @@ class Player(pygame.sprite.Sprite):
         else:
             self.duck = False
 
-        if keys[pygame.K_SPACE]:
-            pass
+        if keys[pygame.K_SPACE] and self.can_shoot:
+            direction = vector(1,0) if self.status.split("_")[0] == 'right' else vector(-1,0)
+            pos = self.rect.center + direction *55
+            y_offset = vector(0,10) if self.duck else vector(0,-16)
+            self.shoot(pos + y_offset,direction,self)
+            self.can_shoot = False
+            self.shoot_time = pygame.time.get_ticks()
 
     def collision(self,direction):
         for sprite in self.collision_sprites.sprites():
@@ -151,3 +124,4 @@ class Player(pygame.sprite.Sprite):
         self.move(dt)
         self.check_contact()
         self.animate(dt)
+        self.shoot_timer()
