@@ -10,9 +10,11 @@ class Player(Entity):
 
         self.collision_sprites = collision_sprites
 
+        self.health = 10
+
         # vertical movement
         self.gravity = 15
-        self.jump_speed = 1400
+        self.jump_speed = 1000
         self.on_floor = False
         self.moving_floor = None
 
@@ -60,7 +62,7 @@ class Player(Entity):
 
         if keys[pygame.K_SPACE] and self.can_shoot:
             direction = vector(1,0) if self.status.split("_")[0] == 'right' else vector(-1,0)
-            pos = self.rect.center + direction *55
+            pos = self.rect.center + direction * 70
             y_offset = vector(0,10) if self.duck else vector(0,-16)
             self.shoot(pos + y_offset,direction,self)
             self.can_shoot = False
@@ -124,4 +126,7 @@ class Player(Entity):
         self.move(dt)
         self.check_contact()
         self.animate(dt)
+        self.blink()
         self.shoot_timer()
+        self.check_death()
+        self.invulnerability_timer()

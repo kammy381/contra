@@ -29,7 +29,7 @@ class Enemy(Entity):
         if distance < 600 and same_y and self.can_shoot:
             bullet_direction = vector(1,0) if self.status =="right" else vector(-1,0)
             y_offset = vector(0,-16)
-            pos = self.rect.center + bullet_direction * 40
+            pos = self.rect.center + bullet_direction * 70
             self.shoot(pos + y_offset,bullet_direction,self)
 
             self.can_shoot = False
@@ -38,5 +38,8 @@ class Enemy(Entity):
     def update(self,dt):
         self.get_status()
         self.animate(dt)
+        self.blink()
         self.shoot_timer()
         self.check_fire()
+        self.check_death()
+        self.invulnerability_timer()
